@@ -3,27 +3,27 @@
 
 - [Introduction](#introduction)
 - [Getting Started](#getting-started)
-    - [Clone this repository into a suitable directory on your system](#clone-this-repository-into-a-suitable-directory-on-your-system)
-    - [Install the MCCI STM32 board support library](#install-the-mcci-stm32-board-support-library)
-    - [Select your desired band](#select-your-desired-band)
-    - [Installing the required libraries](#installing-the-required-libraries)
-        - [List of required libraries](#list-of-required-libraries)
-    - [Build and Download](#build-and-download)
-    - [Load the sketch into the Catena](#load-the-sketch-into-the-catena)
+	- [Clone this repository into a suitable directory on your system](#clone-this-repository-into-a-suitable-directory-on-your-system)
+	- [Install the MCCI STM32 board support library](#install-the-mcci-stm32-board-support-library)
+	- [Select your desired band](#select-your-desired-band)
+	- [Installing the required libraries](#installing-the-required-libraries)
+		- [List of required libraries](#list-of-required-libraries)
+	- [Build and Download](#build-and-download)
+	- [Load the sketch into the Catena](#load-the-sketch-into-the-catena)
 - [Set the identity of your Catena 4618](#set-the-identity-of-your-catena-4618)
-    - [Check platform and serial number setup](#check-platform-and-serial-number-setup)
-    - [Platform Provisioning](#platform-provisioning)
+	- [Check platform and serial number setup](#check-platform-and-serial-number-setup)
+	- [Platform Provisioning](#platform-provisioning)
 - [LoRaWAN Provisioning](#lorawan-provisioning)
-    - [Preparing the network for your device](#preparing-the-network-for-your-device)
-    - [Preparing your device for the network](#preparing-your-device-for-the-network)
-    - [Changing registration](#changing-registration)
-    - [Starting Over](#starting-over)
+	- [Preparing the network for your device](#preparing-the-network-for-your-device)
+	- [Preparing your device for the network](#preparing-your-device-for-the-network)
+	- [Changing registration](#changing-registration)
+	- [Starting Over](#starting-over)
 - [Notes](#notes)
-    - [Setting up DFU on a Linux or Windows PC](#setting-up-dfu-on-a-linux-or-windows-pc)
-    - [Data Format](#data-format)
-    - [Unplugging the USB Cable while running on batteries](#unplugging-the-usb-cable-while-running-on-batteries)
-    - [Deep sleep and USB](#deep-sleep-and-usb)
-    - [gitboot.sh and the other sketches](#gitbootsh-and-the-other-sketches)
+	- [Setting up DFU on a Linux or Windows PC](#setting-up-dfu-on-a-linux-or-windows-pc)
+	- [Data Format](#data-format)
+	- [Unplugging the USB Cable while running on batteries](#unplugging-the-usb-cable-while-running-on-batteries)
+	- [Deep sleep and USB](#deep-sleep-and-usb)
+	- [gitboot.sh and the other sketches](#gitbootsh-and-the-other-sketches)
 
 <!-- /TOC -->
 ## Introduction
@@ -138,7 +138,7 @@ This sketch depends on the following libraries.
 *  https://github.com/mcci-catena/Catena-mcciadk
 *  https://github.com/mcci-catena/arduino-lmic
 *  https://github.com/mcci-catena/MCCI_FRAM_I2C
-*  https://github.com/mcci-catena/MCCI-Catena-HS300x
+*  https://github.com/mcci-catena/MCCI-Catena-SHT3x
 
 ### Build and Download
 
