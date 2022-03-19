@@ -1,4 +1,15 @@
 # Catena 4618 Sensor Sketch
+<!--
+  This TOC uses the VS Code markdown TOC extension AlanWalk.markdown-toc.
+  We strongly recommend updating using VS Code, the markdown-toc extension and the
+  bierner.markdown-preview-github-styles extension. Note that if you are using
+  VS Code 1.29 and Markdown TOC 1.5.6, https://github.com/AlanWalk/markdown-toc/issues/65
+  applies -- you must change your line-ending to some non-auto value in Settings>
+  Text Editor>Files.  `\n` works for me.
+-->
+<!-- markdownlint-disable MD033 MD004 -->
+<!-- markdownlint-capture -->
+<!-- markdownlint-disable -->
 <!-- TOC depthFrom:2 updateOnSave:true -->
 
 - [Introduction](#introduction)
@@ -24,18 +35,26 @@
 	- [Unplugging the USB Cable while running on batteries](#unplugging-the-usb-cable-while-running-on-batteries)
 	- [Deep sleep and USB](#deep-sleep-and-usb)
 	- [gitboot.sh and the other sketches](#gitbootsh-and-the-other-sketches)
+- [Meta](#meta)
+	- [Release History](#release-history)
+	- [License](#license)
+	- [Support Open Source Hardware and Software](#support-open-source-hardware-and-software)
+	- [Trademarks](#trademarks)
 
 <!-- /TOC -->
+<!-- markdownlint-restore -->
+<!-- Due to a bug in Markdown TOC, the table is formatted incorrectly if tab indentation is set other than 4. Due to another bug, this comment must be *after* the TOC entry. -->
+
 ## Introduction
 
-This sketch demonstrates the MCCI Catena&reg; 4618 M201 as a remote temperature/humidity/light sensor using a LoRaWAN&reg;-techology network to transmit to a remote server.
+This sketch demonstrates the [MCCI Catena&reg; 4618 M201](https://mcci.io/catena4618) as a remote temperature/humidity/light sensor using a LoRaWAN&reg;-techology network to transmit to a remote server.
 
 The Catena 4618 M201 is a single-board LoRaWAN-enabled sensor device with the following integrated sensors:
 
 - Sensirion SHT-35-DIS-F temperature and humidity sensor
 - Silicon Labs Si1133 light sensor
 
-Documents on the MCCI Catena 4618 M201 are at https://github.com/mcci-catena/HW-Designs/tree/master/Boards/Catena-4618. You may also refer to the documents for the 4612, which are at https://github.com/mcci-catena/HW-Designs/tree/master/Boards/Catena-4611_4612.
+Documents on the MCCI Catena 4618 M201 are on GitHub [here](https://github.com/mcci-catena/HW-Designs/tree/master/Boards/Catena-4618). You may also refer to the documents for the 4612, which are also on GitHub [here](https://github.com/mcci-catena/HW-Designs/tree/master/Boards/Catena-4611_4612).
 
 ## Getting Started
 
@@ -302,3 +321,23 @@ The workaround is use DFU boot mode to download the catena-hello sketch from [Ca
 ### gitboot.sh and the other sketches
 
 Many of the sketches in other directories in this tree are for engineering use at MCCI. The `git-repos.dat` file in this directory does not necessarily install all the required libraries needed for building the other directories. However, many sketches have a suitable `git-repos.dat`. In any case, all the libraries should be available from https://github.com/mcci-catena/; and we are working on getting `git-repos.dat` files in every sub-directory.
+
+## Meta
+
+### Release History
+
+- v0.1.3 is the first official release
+
+### License
+
+This repository is released under the [MIT](./LICENSE) license. Commercial licenses are also available from MCCI Corporation.
+
+### Support Open Source Hardware and Software
+
+MCCI invests time and resources providing this open source code, please support MCCI and open-source hardware by purchasing products from MCCI, Adafruit and other open-source hardware/software vendors!
+
+For information about MCCI's products, please visit [store.mcci.com](https://store.mcci.com/).
+
+### Trademarks
+
+MCCI and MCCI Catena are registered trademarks of MCCI Corporation. LoRaWAN is a registered trademark of the LoRa Alliance. LoRa is a registered trademark of Semtech Corporation. All other marks are the property of their respective owners.
