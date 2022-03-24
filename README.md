@@ -110,7 +110,7 @@ Then go to `Tools>Board:...` and scroll to the bottom. You should see `MCCI Cate
 
 When you select a board, the default LoRaWAN region is set to US-915, which is used in North America and much of South America. If you're elsewhere, you need to select your target region. You can do it in the IDE:
 
-![Select Bandplan](../extra/assets/select-band-plan.gif)
+![Select Bandplan](./extras/assets/select-band-plan.gif)
 
 As the animation shows, use `Tools>LoRaWAN Region...` and choose the appropriate entry from the menu.
 
@@ -181,7 +181,7 @@ This can be done with any terminal emulator, but it's easiest to do it with the 
 
 ### Check platform and serial number setup
 
-![Newline](./assets/serial-monitor-newline.png)
+![Newline](./extras/assets/serial-monitor-newline.png)
 
 At the bottom right side of the serial monitor window, set the dropdown to `Newline` and `115200 baud`.
 
@@ -238,7 +238,7 @@ For OTAA, we'll need to load three items into the device. (We'll use USB to load
 
 3. *The application key, or "AppKey"*. This is a 16-byte number.
 
-If you're using The Things Network as your network provider, see the notes in the separate file in this repository: [Getting Started with The Things Network](../extra/Getting-Started-With-The-Things-Network.md). This walks you through the process of creating an application and registering a device. During that process, you will input the DevEUI (we suggest using the serial number printed on the Catena). At the end of the process, The Things Network will supply you with the required AppEUI and Application Key.
+If you're using The Things Network as your network provider, see the notes in the separate file in this repository: [Getting Started with The Things Network](../extras/Getting-Started-With-The-Things-Network.md). This walks you through the process of creating an application and registering a device. During that process, you will input the DevEUI (we suggest using the serial number printed on the Catena). At the end of the process, The Things Network will supply you with the required AppEUI and Application Key.
 
 For other networks, follow their instructions for determining the DevEUI and getting the AppEUI and AppKey.
 
@@ -255,7 +255,7 @@ Enter the following commands in the serial monitor, substituting your _`DevEUI`_
 
 After each command, you will see an `OK`.
 
-<!-- ![provisioned](./assets/provisioned.png) -->
+![provisioned](./extras/assets/provisioned.png)
 
 Then reboot your Catena using the command `system reset`. If you're using the Arduino environment on Windows, you will have to close and re-open the serial monitor after resetting the Catena.
 
@@ -302,7 +302,7 @@ Because the 4618 M201 is essentially identical to the 4612 other than sensors, y
 
 ### Data Format
 
-Refer to the [Protocol Description](../extra/catena-message-port3-format.md) in the `extras` directory for information on how data is encoded.
+Refer to the [Protocol Description](../extras/catena-message-port3-format.md) in the `extras` directory for information on how data is encoded.
 
 ### Unplugging the USB Cable while running on batteries
 

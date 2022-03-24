@@ -115,8 +115,8 @@ The following input data can be used to test decoders.
 
 A Node-RED script to decode this data is part of this repository. You can download the latest version from github:
 
-- in raw form: https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/extra/catena-message-port3-decoder-node-red.js
-- or view it: https://github.com/mcci-catena/Catena-Sketches/blob/master/extra/catena-message-port3-decoder-node-red.js
+- in raw form: https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/extras/catena-message-port3-decoder-node-red.js
+- or view it: https://github.com/mcci-catena/Catena-Sketches/blob/master/extras/catena-message-port3-decoder-node-red.js
 
 ## The Things Network Console decoding script
 
@@ -124,5 +124,5 @@ The repository contains a generic script that decodes all formats, including por
 
 You can get the latest version on github:
 
-- in raw form: https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/extra/catena-message-generic-decoder-ttn.js
-- or view it: https://github.com/mcci-catena/Catena-Sketches/blob/master/extra/catena-message-generic-decoder-ttn.js
+- in raw form: https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/extras/catena-message-generic-decoder-ttn.js
+- or view it: https://github.com/mcci-catena/Catena-Sketches/blob/master/extras/catena-message-generic-decoder-ttn.js
