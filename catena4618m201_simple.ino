@@ -6,7 +6,7 @@ Function:
         Sensor program for Catena 4618m201.
 
 Copyright notice:
-        This file copyright (C) 2019 by
+        This file copyright (C) 2019, 2022 by
 
                 MCCI Corporation
                 3520 Krums Corners Road
@@ -153,7 +153,7 @@ static constexpr const char *filebasename(const char *s)
 |
 \****************************************************************************/
 
-static const char sVersion[] = "0.1.3";
+static const char sVersion[] = "0.2.0";
 
 /****************************************************************************\
 |

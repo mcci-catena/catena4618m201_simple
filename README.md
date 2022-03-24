@@ -1,4 +1,7 @@
 # Catena 4618 Sensor Sketch
+
+[![GitHub release](https://img.shields.io/github/release/mcci-catena/catena4618m201_simple.svg)](https://github.com/mcci-catena/catena4618m201_simple/releases/latest) [![GitHub commits](https://img.shields.io/github/commits-since/mcci-catena/catena4618m201_simple/latest.svg)](https://github.com/mcci-catena/catena4618m201_simple/compare/v0.2.0...master)
+
 <!--
   This TOC uses the VS Code markdown TOC extension AlanWalk.markdown-toc.
   We strongly recommend updating using VS Code, the markdown-toc extension and the
@@ -326,6 +329,7 @@ Many of the sketches in other directories in this tree are for engineering use a
 
 ### Release History
 
+- v0.2.0 adopts the common build system.
 - v0.1.3 is the first official release
 
 ### License
