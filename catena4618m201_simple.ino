@@ -28,6 +28,8 @@ Revision history:
 #include <Catena_TxBuffer.h>
 #include <Catena_CommandStream.h>
 #include <Catena_Mx25v8035f.h>
+#include <Catena_Download.h>
+#include <Catena_BootloaderApi.h>
 
 #include <Wire.h>
 #include <Arduino_LoRaWAN.h>
@@ -128,6 +130,32 @@ static Arduino_LoRaWAN::ReceivePortBufferCbFn receiveMessage;
 
 /****************************************************************************\
 |
+|	Command table
+|
+\****************************************************************************/
+
+// forward reference to the command function
+static cCommandStream::CommandFn cmdUpdate;
+
+// the individual commmands are put in this table
+static const cCommandStream::cEntry sMyExtraCommmands[] =
+        {
+        { "fallback", cmdUpdate },
+        { "update", cmdUpdate },
+        // other commands go here....
+        };
+
+/* a top-level structure wraps the above and connects to the system table */
+/* it optionally includes a "first word" so you can for sure avoid name clashes */
+static cCommandStream::cDispatch
+sMyExtraCommands_top(
+        sMyExtraCommmands,              /* this is the pointer to the table */
+        sizeof(sMyExtraCommmands),      /* this is the size of the table */
+        "system"                        /* this is the "first word" for all the commands in this table*/
+        );
+
+/****************************************************************************\
+|
 |   handy constexpr to extract the base name of a file
 |
 \****************************************************************************/
@@ -153,7 +181,7 @@ static constexpr const char *filebasename(const char *s)
 |
 \****************************************************************************/
 
-static const char sVersion[] = "0.2.0";
+static const char sVersion[] = "0.3.0";
 
 /****************************************************************************\
 |
@@ -193,7 +221,16 @@ SPIClass gSPI2(
 
 //   The flash
 Catena_Mx25v8035f gFlash;
-bool fFlash;
+bool gfFlash;
+
+/* instantiate a serial object */
+cSerial<decltype(Serial)> gSerial(Serial);
+
+/* instantiate the bootloader API */
+cBootloaderApi gBootloaderApi;
+
+/* instantiate the downloader */
+cDownload gDownload;
 
 //  USB power
 bool fUsbPower;
@@ -244,6 +281,7 @@ void setup(void)
         setup_light();
         setup_temp_rh();
         setup_flash();
+        setup_download();
         setup_uplink();
         }
 
@@ -376,13 +414,13 @@ void setup_flash(void)
         {
         if (gFlash.begin(&gSPI2, Catena::PIN_SPI2_FLASH_SS))
                 {
-                fFlash = true;
+                gfFlash = true;
                 gFlash.powerDown();
                 gCatena.SafePrintf("FLASH found, put power down\n");
                 }
         else
                 {
-                fFlash = false;
+                gfFlash = false;
                 gFlash.end();
                 gSPI2.end();
                 gCatena.SafePrintf("No FLASH found: check hardware\n");
@@ -412,6 +450,113 @@ void setup_uplink(void)
                         startSendingUplink();
                         }
                 }
+        }
+
+void setup_download()
+        {
+        /* add our application-specific commands */
+        gCatena.addCommands(
+                /* name of app dispatch table, passed by reference */
+                sMyExtraCommands_top,
+                /*
+                || optionally a context pointer using static_cast<void *>().
+                || normally only libraries (needing to be reentrant) need
+                || to use the context pointer.
+                */
+                nullptr
+                );
+
+        gDownload.begin(gFlash, gBootloaderApi);
+        }
+
+/* process "system" "update" / "system" "fallback" -- args are ignored */
+// argv[0] is "update" or "fallback"
+// argv[1..argc-1] are the (ignored) arguments
+static cCommandStream::CommandStatus cmdUpdate(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        )
+        {
+        cCommandStream::CommandStatus result;
+
+        pThis->printf(
+                "Update firmware: echo off, timeout %d seconds\n",
+                (cDownload::kTransferTimeoutMs + 500) / 1000
+                );
+
+        if (! gfFlash)
+                {
+                pThis->printf(
+                        "** flash not found at init time, can't update **\n"
+                        );
+                return cCommandStream::CommandStatus::kIoError;
+                }
+
+        gSPI2.begin();
+        gFlash.begin(&gSPI2, Catena::PIN_SPI2_FLASH_SS);
+
+        struct context_t
+                {
+                cCommandStream *pThis;
+                bool fWorking;
+                cDownload::Status_t status;
+                cCommandStream::CommandStatus cmdStatus;
+                cDownload::Request_t request;
+                };
+
+        context_t context { pThis, true };
+
+        auto doneFn =
+                [](void *pUserData, cDownload::Status_t status) -> void
+                        {
+                        context_t * const pCtx = (context_t *)pUserData;
+
+                        cCommandStream * const pThis = pCtx->pThis;
+                        cCommandStream::CommandStatus cmdStatus;
+
+                        cmdStatus = cCommandStream::CommandStatus::kSuccess;
+
+                        if (status != cDownload::Status_t::kSuccessful)
+                                {
+                                pThis->printf(
+                                        "download error, status %u\n",
+                                        unsigned(status)
+                                        );
+                                cmdStatus = cCommandStream::CommandStatus::kIoError;
+                                }
+
+                        pCtx->cmdStatus = cmdStatus;
+                        pCtx->fWorking = false;
+                        };
+
+        if (gDownload.evStartSerialDownload(
+                argv[0][0] == 'u' ? cDownload::DownloadRq_t::GetUpdate
+                                  : cDownload::DownloadRq_t::GetFallback,
+                gSerial,
+                context.request,
+                doneFn,
+                (void *) &context)
+                )
+                {
+                while (context.fWorking)
+                        gCatena.poll();
+
+                result = context.cmdStatus;
+                }
+        else
+                {
+                pThis->printf(
+                        "download launch failure\n"
+                        );
+                result = cCommandStream::CommandStatus::kInternalError;
+                }
+
+        gFlash.powerDown();
+        gSPI2.end();
+
+        return result;
         }
 
 // The Arduino loop routine -- in our case, we just drive the other loops.
@@ -740,7 +885,7 @@ void deepSleepPrepare(void)
         Serial.end();
         Wire.end();
         SPI.end();
-        if (fFlash)
+        if (gfFlash)
                 gSPI2.end();
         }
 
@@ -749,7 +894,7 @@ void deepSleepRecovery(void)
         Serial.begin();
         Wire.begin();
         SPI.begin();
-        if (fFlash)
+        if (gfFlash)
                 gSPI2.begin();
         }
 
