@@ -866,16 +866,35 @@ void doDeepSleep(osjob_t *pJob)
                         fDeepSleepTest ? CATCFG_T_CYCLE_TEST : gTxCycle
                         );
 
-        /* ok... now it's time for a deep sleep */
-        gLed.Set(LedPattern::Off);
-        deepSleepPrepare();
+        /* wait for LMIC to settle down */
+        while (sleepInterval > 0)
+                {
+                if (! os_queryTimeCriticalJobs(sec2osticks(sleepInterval)))
+                        break;
+                
+                /* can't sleep yet, just idle */
+                for (unsigned i = 1000; i > 0; --i)
+                        {
+                        os_runloop_once();
+                        gCatena.poll();
+                        delay(1);
+                        }
+                sleepInterval -= 1;
+                }
 
-        /* sleep */
-        gCatena.Sleep(sleepInterval);
+        /* the LMIC is idle, or the sleep interval is exhausted. if idle and there's still time to sleep, sleep */
+        if (sleepInterval > 0)
+                {
+                /* ok... now it's time for a deep sleep */
+                gLed.Set(LedPattern::Off);
+                deepSleepPrepare();
 
-        /* recover from sleep */
-        deepSleepRecovery();
+                gCatena.Sleep(sleepInterval);
 
+                /* recover from sleep */
+                deepSleepRecovery();
+                }
+        
         /* and now... we're awake again. trigger another measurement */
         sleepDoneCb(pJob);
         }
