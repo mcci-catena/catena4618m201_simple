@@ -1,9 +1,9 @@
 /*
 
-Name:   catena-message-port3-decoder-ttn.js
+Name:   catena-message-port3-port6-decoder-ttn.js
 
 Function:
-    Decode MCCI port 0x03 messages for TTN console.  Usually the generic decoder is more
+    Decode MCCI port 0x03/0x06 messages for TTN console.  Usually the generic decoder is more
     convenient (catena-message-generic-decoder-ttn.js)
 
 Copyright and License:
@@ -133,7 +133,7 @@ function CalculateHeatIndexCelsius(t, rh) {
 Name:  Decoder()
 
 Function:
-    Decode an MCCI Catena port-2 message for The Things Network console.
+    Decode an MCCI Catena port-3/6 message for The Things Network console.
 
 Definition:
     function Decoder(bytes, port) -> object
@@ -152,10 +152,10 @@ function Decoder(bytes, port) {
     // (array) of bytes to an object of fields.
     var decoded = {};
 
-    if (! (port === 3))
+    if (! (port === 3)  && ! (port === 6))
         return null;
 
-    // see catena-message-port3-format.md
+    // see catena-message-port3-port6-format.md
     // i is used as the index into the message. Start with the flag byte.
     // note that there's no discriminator.
     // test vectors are also available there.
@@ -204,21 +204,72 @@ function Decoder(bytes, port) {
     }
 
     if (flags & 0x10) {
-        // we have light irradiance info
-        var irradiance = {};
-        decoded.irradiance = irradiance;
+        if (port === 3)
+            {
+            // we have light irradiance info
+            var irradiance = {};
+            decoded.irradiance = irradiance;
 
-        var lightRaw = (bytes[i] << 8) + bytes[i + 1];
-        i += 2;
-        irradiance.IR = lightRaw;
+            var lightRaw = (bytes[i] << 8) + bytes[i + 1];
+            i += 2;
+            irradiance.IR = lightRaw;
 
-        lightRaw = (bytes[i] << 8) + bytes[i + 1];
-        i += 2;
-        irradiance.White = lightRaw;
+            lightRaw = (bytes[i] << 8) + bytes[i + 1];
+            i += 2;
+            irradiance.White = lightRaw;
 
-        lightRaw = (bytes[i] << 8) + bytes[i + 1];
-        i += 2;
-        irradiance.UV = lightRaw;
+            lightRaw = (bytes[i] << 8) + bytes[i + 1];
+            i += 2;
+            irradiance.UV = lightRaw;
+            }
+
+        else if (port === 6)
+            {
+            // we have light (lux)
+            var luxRaw = (bytes[i] << 16) + (bytes[i + 1] << 8) + bytes[i + 2];
+            i = i + 3;
+
+            // luxRaw is the 3-byte number decoded from wherever;
+            // it's in range 0..0xFFFFFF
+            // bit 23 is the sign bit
+            // bits 22..16 are the exponent
+            // bits 15..0 are the the mantissa. Unlike IEEE format,
+            // the msb is explicit; this means that numbers
+            // might not be normalized, but makes coding for
+            // underflow easier.
+            // As with IEEE format, negative zero is possible, so
+            // we special-case that in hopes that JavaScript will
+            // also cooperate.
+
+            // extract sign, exponent, mantissa
+            var bSign     = (luxRaw & 0x800000) ? true : false;
+            var uExp      = (luxRaw & 0x7F0000) >> 16;
+            var uMantissa = (luxRaw & 0x00FFFF);
+
+            // if non-numeric, return appropriate result.
+            if (uExp === 0x7F) {
+                if (uMantissa === 0)
+                    return bSign ? Number.NEGATIVE_INFINITY
+                            : Number.POSITIVE_INFINITY;
+                else
+                    return Number.NaN;
+            // else unless denormal, set the 1.0 bit
+            } else if (uExp !== 0) {
+                uMantissa += 0x010000;
+            } else { // denormal: exponent is the minimum
+                uExp = 1;
+            }
+
+            // make a floating mantissa in [0,2); usually [1,2), but
+            // sometimes (0,1) for denormals, and exactly zero for zero.
+            var mantissa = uMantissa / 0x010000;
+
+            // apply the exponent.
+            mantissa = Math.pow(2, uExp - 63) * mantissa;
+
+            // apply sign and return result.
+            decoded.lux = bSign ? -mantissa : mantissa;
+            }
     }
 
     if (flags & 0x20) {
