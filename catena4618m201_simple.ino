@@ -64,7 +64,8 @@ using namespace Mcci_Ltr_329als;
 |
 \****************************************************************************/
 
-constexpr uint8_t kUplinkPort = 3;
+constexpr uint8_t kUplinkPortV1 = 3;
+constexpr uint8_t kUplinkPortV2 = 6;
 
 enum class FlagsSensorPort3 : uint8_t
         {
@@ -812,12 +813,19 @@ void startSendingUplink(void)
                 gLed.Set(LedPattern::Joining);
 
         bool fConfirmed = false;
+        uint8_t kUplinkPort;
+
         if (gCatena.GetOperatingFlags() &
                 static_cast<uint32_t>(gCatena.OPERATING_FLAGS::fConfirmedUplink))
                 {
                 gCatena.SafePrintf("requesting confirmed tx\n");
                 fConfirmed = true;
                 }
+
+        if (!isVersion2())
+                kUplinkPort = kUplinkPortV1;
+        else
+                kUplinkPort = kUplinkPortV2;
 
         gLoRaWAN.SendBuffer(b.getbase(), b.getn(), sendBufferDoneCb, NULL, fConfirmed, kUplinkPort);
         }
