@@ -1210,7 +1210,7 @@ void printBoardInfo()
 
 bool isVersion2()
     {
-    if (boardRev < 3)
+    if (boardRev < 1)
         return false;
     else
         return true;
