@@ -1,4 +1,4 @@
-# Understanding MCCI Catena data sent on port 3
+# Understanding MCCI Catena data sent on port 3 and port 6
 
 <!-- TOC depthFrom:2 updateOnSave:true -->
 
@@ -9,11 +9,13 @@
 	- [Boot counter (field 2)](#boot-counter-field-2)
 	- [Environmental Readings (field 3)](#environmental-readings-field-3)
 	- [Ambient light (field 4)](#ambient-light-field-4)
+	- [Light intensity](#light-intensity-field-4)
 	- [Bus Voltage (field 5)](#bus-voltage-field-5)
 - [Data Formats](#data-formats)
 	- [uint16](#uint16)
 	- [int16](#int16)
 	- [uint8](#uint8)
+	- [sflt24](#sflt24)
 - [Test Vectors](#test-vectors)
 - [Node-RED Decoding Script](#node-red-decoding-script)
 - [The Things Network Console decoding script](#the-things-network-console-decoding-script)
@@ -22,7 +24,7 @@
 
 ## Overall Message Format
 
-Port 3 uplink messages are used by Catena4617_simple, Catena4618_simple and related sketches. They're designed to minimize power use and maximize battery life; so instead of using a port code plus a message discrimintor, these simply use port 3.
+Port 3 uplink messages are used by Catena4618_simple and Catena4618m201_simple sketches. They're designed to minimize power use and maximize battery life; so instead of using a port code plus a message discrimintor, these simply use port 3 for version 1 boards and port 6 for version 2 boards.
 
 Each message has the following layout.
 
@@ -35,7 +37,7 @@ Each bit in byte 0 represents whether a corresponding field in bytes 1..n is pre
 
 ## Bitmap fields and associated fields
 
-The bitmap byte has the following interpretation. `int16`, `uint16`, etc. are defined after the table.
+The bitmap byte has the following interpretation for version 1 boards (transmitting over port 3).
 
 Bitmap bit | Length of corresponding field (bytes) | Data format |Description
 :---:|:---:|:---:|:----
@@ -43,10 +45,25 @@ Bitmap bit | Length of corresponding field (bytes) | Data format |Description
 1 | 2 | [int16](#int16) | [System voltage](#sys-voltage-field-1)
 2 | 1 | [uint8](#uint8) | [Boot counter](#boot-counter-field-2)
 3 | 5 | [int16](#int16), [uint16](#uint16) | [Temperature, humidity](environmental-readings-field-3)
-4 | 2 | [uint16](#uint16), [uint16](#uint16), [uint16](#uint16) | [Ambient Light](#ambient-light-field-4) (IR, white, UV)
+4 | 6 | [uint16](#uint16), [uint16](#uint16), [uint16](#uint16) | [Ambient Light](#ambient-light-field-4) (IR, white, UV)
 5 | 2 | [int16](#int16) | [Bus voltage](#bus-voltage-field-5)
 6 | n/a | _reserved_ | Reserved for future use.
 7 | n/a | _reserved_ | Reserved for future use.
+
+The bitmap byte has the following interpretation for version 2 boards (transmitting over port 6).
+
+Bitmap bit | Length of corresponding field (bytes) | Data format |Description
+:---:|:---:|:---:|:----
+0 | 2 | [int16](#int16) | [Battery voltage](#battery-voltage-field-0)
+1 | 2 | [int16](#int16) | [System voltage](#sys-voltage-field-1)
+2 | 1 | [uint8](#uint8) | [Boot counter](#boot-counter-field-2)
+3 | 5 | [int16](#int16), [uint16](#uint16) | [Temperature, humidity](environmental-readings-field-3)
+4 | 3 | [sflt24](#sflt24) | [Light intensity](#light-intensity-field-4) (IR, white, UV)
+5 | 2 | [int16](#int16) | [Bus voltage](#bus-voltage-field-5)
+6 | n/a | _reserved_ | Reserved for future use.
+7 | n/a | _reserved_ | Reserved for future use.
+
+NOTE: `int16`, `uint16`, etc. are defined after the table.
 
 ### Battery Voltage (field 0)
 
@@ -72,13 +89,17 @@ Field 3, if present, has two environmental readings as four bytes of data.
 
 ### Ambient light (field 4)
 
-Field 4, if present, has three light readings as six bytes of data.
+For version 1 boards, Field 4, if present, has three light readings as six bytes of data.
 
 - The first two bytes are a [`uint16`](#uint16) representing the IR measurement.
 - Bytes two and three are a [`uint16`](#uint16) representing the white light measurement.
 - Bytes four and five are a [`uint16`](#uint16) representing the UV light measurent.
 
 The measurements range from 0 to 65536, but must be calibrated to obtain engineering units.
+
+### Light intensity (field 4)
+
+For version 2 boards, Field 4, if present, has light intensity reading as three bytes of signed float lux data.
 
 ### Bus Voltage (field 5)
 
@@ -100,6 +121,10 @@ a signed integer from -32,768 to 32,767, in two's complement form. (Thus 0..0x7F
 
 an integer from 0 to 255.
 
+### sflt24
+
+a signed float from 0 to 16777215.
+
 ## Test Vectors
 
 The following input data can be used to test decoders.
@@ -115,14 +140,14 @@ The following input data can be used to test decoders.
 
 A Node-RED script to decode this data is part of this repository. You can download the latest version from github:
 
-- in raw form: https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/extras/catena-message-port3-decoder-node-red.js
-- or view it: https://github.com/mcci-catena/Catena-Sketches/blob/master/extras/catena-message-port3-decoder-node-red.js
+- in raw form: https://raw.githubusercontent.com/mcci-catena/catena4618m201_simple/refs/heads/master/extras/catena-message-port3-port6-decoder-node-red.js
+- or view it: https://github.com/mcci-catena/catena4618m201_simple/blob/master/extras/catena-message-port3-port6-decoder-node-red.js
 
 ## The Things Network Console decoding script
 
-The repository contains a generic script that decodes all formats, including port 3, for [The Things Network console](https://console.thethingsnetwork.org).
+The repository contains a generic script that decodes all formats, including port 3 and port 6, for [The Things Network console](https://console.thethingsnetwork.org).
 
 You can get the latest version on github:
 
-- in raw form: https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/extras/catena-message-generic-decoder-ttn.js
-- or view it: https://github.com/mcci-catena/Catena-Sketches/blob/master/extras/catena-message-generic-decoder-ttn.js
+- in raw form: https://raw.githubusercontent.com/mcci-catena/catena4618m201_simple/refs/heads/master/extras/catena-message-port3-port6-decoder-ttn.js
+- or view it: https://github.com/mcci-catena/catena4618m201_simple/blob/master/extras/catena-message-port3-port6-decoder-ttn.js
