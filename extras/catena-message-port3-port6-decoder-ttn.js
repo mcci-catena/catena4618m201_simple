@@ -283,3 +283,11 @@ function Decoder(bytes, port) {
     // at this point, decoded has the real values.
     return decoded;
 }
+
+// TTN V3 decoder
+function decodeUplink(tInput) {
+    var decoded = Decoder(tInput.bytes, tInput.fPort);
+    var result = {};
+    result.data = decoded;
+    return result;
+}
