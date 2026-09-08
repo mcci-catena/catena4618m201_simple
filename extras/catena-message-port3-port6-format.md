@@ -11,6 +11,7 @@
 	- [Ambient light (field 4)](#ambient-light-field-4)
 	- [Light intensity](#light-intensity-field-4)
 	- [Bus Voltage (field 5)](#bus-voltage-field-5)
+	- [Reset cause (field 6)](#reset-cause-field-6)
 - [Data Formats](#data-formats)
 	- [uint16](#uint16)
 	- [int16](#int16)
@@ -47,7 +48,7 @@ Bitmap bit | Length of corresponding field (bytes) | Data format |Description
 3 | 5 | [int16](#int16), [uint16](#uint16) | [Temperature, humidity](environmental-readings-field-3)
 4 | 6 | [uint16](#uint16), [uint16](#uint16), [uint16](#uint16) | [Ambient Light](#ambient-light-field-4) (IR, white, UV)
 5 | 2 | [int16](#int16) | [Bus voltage](#bus-voltage-field-5)
-6 | n/a | _reserved_ | Reserved for future use.
+6 | 1 | [uint8](#uint8) | [Reset cause](#reset-cause-field-6)
 7 | n/a | _reserved_ | Reserved for future use.
 
 The bitmap byte has the following interpretation for version 2 boards (transmitting over port 6).
@@ -60,7 +61,7 @@ Bitmap bit | Length of corresponding field (bytes) | Data format |Description
 3 | 5 | [int16](#int16), [uint16](#uint16) | [Temperature, humidity](environmental-readings-field-3)
 4 | 3 | [sflt24](#sflt24) | [Light intensity](#light-intensity-field-4) (IR, white, UV)
 5 | 2 | [int16](#int16) | [Bus voltage](#bus-voltage-field-5)
-6 | n/a | _reserved_ | Reserved for future use.
+6 | 1 | [uint8](#uint8) | [Reset cause](#reset-cause-field-6)
 7 | n/a | _reserved_ | Reserved for future use.
 
 NOTE: `int16`, `uint16`, etc. are defined after the table.
@@ -104,6 +105,21 @@ For version 2 boards, Field 4, if present, has light intensity reading as three 
 ### Bus Voltage (field 5)
 
 Field 5, if present, carries the current voltage from USB VBus. Divide by 4096.0 to convert from counts to volts. (Thus, this field can represent values from -8.0 volts to 7.998 volts.)
+
+### Reset cause (field 6)
+
+Field 6, if present, carries the top byte of the STM32 `RCC->CSR` register, captured at boot before the reset flags are cleared. Each bit is a separate reset cause; more than one bit can be set for a single reset (for example, a cold power-up typically sets both the POR and pin-reset bits).
+
+Bit | Meaning
+:---:|:----
+0 | Firewall reset
+1 | Option byte loader reset
+2 | NRST pin reset
+3 | Power-on/power-down reset
+4 | Software reset (`NVIC_SystemReset()` / `system reset` command)
+5 | Independent watchdog (IWDG) reset
+6 | Window watchdog (WWDG) reset
+7 | Low-power reset
 
 ## Data Formats
 
