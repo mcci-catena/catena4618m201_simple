@@ -6,7 +6,7 @@ Function:
         Sensor program for Catena 4618m201.
 
 Copyright notice:
-        This file copyright (C) 2019 - 2024 by
+        This file copyright (C) 2019 - 2026 by
 
                 MCCI Corporation
                 3520 Krums Corners Road
@@ -42,6 +42,7 @@ Revision history:
 #include <Catena_Log.h>
 #include <cmath>
 #include <type_traits>
+#include <Catena_WatchdogTimer.h>
 
 using namespace McciCatena;
 using namespace Mcci_Ltr_329als;
@@ -75,6 +76,7 @@ enum class FlagsSensorPort3 : uint8_t
         FlagTH = 1 << 3,	// temperature, humidity
         FlagLight = 1 << 4,	// Si1133 "ir", "white", "uv"
         FlagVbus = 1 << 5,	// Vbus input
+        FlagResetCause = 1 << 6,	// STM32 RCC->CSR reset-cause bits
         };
 
 constexpr FlagsSensorPort3 operator| (const FlagsSensorPort3 lhs, const FlagsSensorPort3 rhs)
@@ -137,14 +139,16 @@ static Arduino_LoRaWAN::ReceivePortBufferCbFn receiveMessage;
 |
 \****************************************************************************/
 
-// forward reference to the command function
+// forward reference to the command functions
 static cCommandStream::CommandFn cmdUpdate;
+static cCommandStream::CommandFn cmdHang;
 
 // the individual commmands are put in this table
 static const cCommandStream::cEntry sMyExtraCommmands[] =
         {
         { "fallback", cmdUpdate },
         { "update", cmdUpdate },
+        { "hang", cmdHang },
         // other commands go here....
         };
 
@@ -184,7 +188,7 @@ static constexpr const char *filebasename(const char *s)
 |
 \****************************************************************************/
 
-static const char sVersion[] = "0.4.1";
+static const char sVersion[] = "0.5.0-pre1";
 
 /****************************************************************************\
 |
@@ -212,6 +216,18 @@ using Flash_t = McciCatena::FlashParamsStm32L0_t;
 using ParamBoard_t = Flash_t::ParamBoard_t;
 using PageEndSignature1_t = Flash_t::PageEndSignature1_t;
 using ParamDescId = Flash_t::ParamDescId;
+
+// the IWDG keeps counting through STOP mode, so a single long gCatena.Sleep()
+// call would let it expire and reset the board mid-sleep. fitfulSleep() below
+// breaks a sleep into chunks of at most this many seconds so each chunk can be
+// followed by a watchdog refresh.
+static constexpr std::uint32_t kNumSecondsFitfulSleepMax = 10;
+static constexpr std::uint32_t kWatchdogTimerSeconds = McciCatena::cWatchdogTimer::kWatchdogSeconds;  // kWatchdogSeconds: 26 seconds
+static_assert(kNumSecondsFitfulSleepMax < kWatchdogTimerSeconds, "Wake up often enough to refresh the IWDG watchdog");
+
+// top byte of RCC->CSR (the reset-cause flags), captured once in setup()
+// before the flags are cleared, and uplinked with each reading.
+uint8_t gResetCauseByte;
 
 // flag to disable LED
 bool fDisableLED;
@@ -312,8 +328,20 @@ void setup(void)
         {
         gCatena.begin();
 
+        // capture and clear the reset-cause flags now, before anything else can
+        // touch RCC->CSR; otherwise old flags stick around and get printed
+        // together with the real cause on some later reset.
+        const uint32_t resetReason = READ_REG(RCC->CSR);
+        // the reset-cause flags are bits 24..31 of RCC->CSR; save them as a
+        // single byte so fillBuffer() can uplink them.
+        gResetCauseByte = uint8_t(resetReason >> 24);
+        __HAL_RCC_CLEAR_RESET_FLAGS();
         setup_platform();
+        gCatena.SafePrintf("\nReset Reason: 0x%x\n", resetReason);
         setup_flash();
+        // arm the IWDG here so the remaining setup steps below (sensor probes
+        // on I2C/SPI) are covered if one of them hangs.
+        setup_watchdog();
         setup_rev();
         if (!isVersion2())
                 {
@@ -500,6 +528,11 @@ void setup_flash(void)
                 }
         }
 
+void setup_watchdog()
+        {
+        gIwdgTimer.setupWatchdog();
+        }
+
 uint32_t gRebootMs;
 
 void setup_uplink(void)
@@ -613,8 +646,13 @@ static cCommandStream::CommandStatus cmdUpdate(
                 (void *) &context)
                 )
                 {
+                // a firmware download can run well past the watchdog timeout,
+                // so refresh it on every pass through this loop.
                 while (context.fWorking)
+                        {
+                        gIwdgTimer.refreshWatchdog();
                         gCatena.poll();
+                        }
 
                 result = context.cmdStatus;
                 }
@@ -632,6 +670,30 @@ static cCommandStream::CommandStatus cmdUpdate(
         return result;
         }
 
+// argv[0] is "hang"
+// diagnostic command: busy-loops for 60s with no watchdog refresh, to confirm
+// the IWDG resets the device rather than letting it hang forever.
+static cCommandStream::CommandStatus cmdHang(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        )
+        {
+        if (argc > 1)
+                return cCommandStream::CommandStatus::kInvalidParameter;
+
+        pThis->printf("looping... watchdog should get us out before we exit\n");
+
+        uint32_t now = millis();
+
+        while (millis() - now < 60 * 1000)
+                ;
+
+        pThis->printf("watchdog did not fire.\n");
+        return cCommandStream::CommandStatus::kError;
+        }
+
 // The Arduino loop routine -- in our case, we just drive the other loops.
 // If we try to do too much, we can break the LMIC radio. So the work is
 // done by outcalls scheduled from the LMIC os loop.
@@ -639,6 +701,9 @@ void fillBuffer(TxBuffer_t &b);
 
 void loop()
         {
+        // this is the heartbeat for the watchdog whenever we're not in
+        // deep sleep (fitfulSleep() covers that case instead).
+        gIwdgTimer.refreshWatchdog();
         gCatena.poll();
 
         /* for mfg test, don't tx, just fill -- this causes output to Serial */
@@ -647,7 +712,7 @@ void loop()
                 {
                 TxBuffer_t b;
                 fillBuffer(b);
-                delay(1000);
+                gIwdgTimer.safeDelay(1000);
                 // since the light sensor was stopped in fillbuffer, restart it.
                 }
         }
@@ -797,6 +862,9 @@ void fillBuffer(TxBuffer_t &b)
 
         b.putV(vBus);
         flag |= FlagsSensorPort3::FlagVbus;
+
+        b.put(gResetCauseByte);
+        flag |= FlagsSensorPort3::FlagResetCause;
 
         *pFlag = uint8_t(flag);
         }
@@ -949,12 +1017,15 @@ void doSleepAlert(const bool fDeepSleep)
                 // sleep and print
                 gLed.Set(LedPattern::TwoShort);
 
+                // deepSleepDelay can run up to 30s, longer than the watchdog
+                // timeout, so refresh it while we busy-wait here.
                 for (auto n = deepSleepDelay; n > 0; --n)
                         {
                         uint32_t tNow = millis();
 
                         while (uint32_t(millis() - tNow) < 1000)
                                 {
+                                gIwdgTimer.refreshWatchdog();
                                 gCatena.poll();
                                 yield();
                                 }
@@ -964,6 +1035,7 @@ void doSleepAlert(const bool fDeepSleep)
                 uint32_t tNow = millis();
                 while (uint32_t(millis() - tNow) < 100)
                         {
+                        gIwdgTimer.refreshWatchdog();
                         gCatena.poll();
                         yield();
                         }
@@ -1007,7 +1079,7 @@ void doDeepSleep(osjob_t *pJob)
         deepSleepPrepare();
 
         /* sleep */
-        gCatena.Sleep(sleepInterval);
+        fitfulSleep(sleepInterval);
 
         /* recover from sleep */
         deepSleepRecovery();
@@ -1032,6 +1104,23 @@ void deepSleepRecovery(void)
         SPI.begin();
         if (gfFlash)
                 gSPI2.begin();
+        }
+
+// sleep, broken up into intervals of 10 seconds or so.
+void fitfulSleep(uint32_t seconds)
+        {
+        /* we need to sleep for not too long each time, so we can have the watchdog enabled */
+        while (seconds > 0)
+                {
+                uint32_t nSecondsThisTime = seconds;
+                if (nSecondsThisTime > kNumSecondsFitfulSleepMax)
+                        nSecondsThisTime = kNumSecondsFitfulSleepMax;
+
+                gCatena.Sleep(nSecondsThisTime);
+                seconds -= nSecondsThisTime;
+
+                gIwdgTimer.refreshWatchdog();
+                }
         }
 
 void doLightSleep(osjob_t *pJob)
@@ -1185,7 +1274,7 @@ void printBoardInfo()
             pBoard->getAssembly(),
             pBoard->getModel()
             );
-    delay(1);
+    gIwdgTimer.safeDelay(1);
     gLog.printf(
             gLog.kInfo,
             "ModNumber: %u\n",
