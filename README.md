@@ -305,7 +305,28 @@ Because the 4618 M201 is essentially identical to the 4612 other than sensors, y
 
 ### Data Format
 
-Refer to the [Protocol Description](../extras/catena-message-port3-format.md) in the `extras` directory for information on how data is encoded.
+Refer to the [Protocol Description](./extras/catena-message-port3-port6-format.md) in the `extras` directory for information on how data is encoded.
+
+### Watchdog Timer and Sleep
+
+The sketch enables the STM32 independent watchdog (IWDG) at startup, with a 26-second timeout (`Catena_WatchdogTimer`). Because the IWDG keeps running even while the MCU is in STOP mode, the sketch does not sleep for the whole transmit interval in one call. Instead, `fitfulSleep()` breaks deep sleep into chunks of at most 10 seconds, refreshing the watchdog after each chunk. The watchdog is also refreshed in the other places the firmware can block for a while, such as the main loop and the `update`/`fallback` firmware-download commands.
+
+If the watchdog is not refreshed for about 26 seconds, the board resets. You can confirm this on hardware with the `system hang` command, which busy-loops for 60 seconds without refreshing the watchdog:
+
+```console
+system hang
+looping... watchdog should get us out before we exit
+```
+
+The board should reset before printing anything further; if you instead see `watchdog did not fire.`, the watchdog is not working as expected.
+
+The cause of the most recent reset (power-on, pin reset, software reset, IWDG, and so on) is read and cleared at boot, and is printed to the serial console:
+
+```console
+Reset Reason: 0x24050300
+```
+
+This value is also included in each uplink; see the [Protocol Description](./extras/catena-message-port3-port6-format.md#reset-cause-field-6) for how to decode it.
 
 ### Unplugging the USB Cable while running on batteries
 

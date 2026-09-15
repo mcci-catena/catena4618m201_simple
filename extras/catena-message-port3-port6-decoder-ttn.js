@@ -280,6 +280,24 @@ function Decoder(bytes, port) {
         decoded.Vbus = Vraw / 4096.0;
     }
 
+    if (flags & 0x40) {
+        // top byte of STM32 RCC->CSR, captured at boot. More than one
+        // bit can be set for a single reset.
+        var resetCause = bytes[i];
+        i += 1;
+        decoded.resetCause = resetCause;
+        decoded.resetCauseFlags = {
+            firewall: !!(resetCause & 0x01),
+            optionByteLoader: !!(resetCause & 0x02),
+            pin: !!(resetCause & 0x04),
+            powerOn: !!(resetCause & 0x08),
+            software: !!(resetCause & 0x10),
+            independentWatchdog: !!(resetCause & 0x20),
+            windowWatchdog: !!(resetCause & 0x40),
+            lowPower: !!(resetCause & 0x80)
+        };
+    }
+
     // at this point, decoded has the real values.
     return decoded;
 }
