@@ -350,6 +350,7 @@ Many of the sketches in other directories in this tree are for engineering use a
 
 ### Release History
 
+- v0.5.0 added IWDG watchdog with fitful sleep during deep sleep, `system hang` diagnostic command, and reset-cause reporting (serial console and uplink field 6)
 - v0.4.1 fix typo of revision to compare the board revision from flash
 - v0.4.0 added V2 boards support
 - v0.3.0 added firmware update via serial feature
