@@ -188,7 +188,7 @@ static constexpr const char *filebasename(const char *s)
 |
 \****************************************************************************/
 
-static const char sVersion[] = "0.5.0-pre1";
+static const char sVersion[] = "0.5.0";
 
 /****************************************************************************\
 |
